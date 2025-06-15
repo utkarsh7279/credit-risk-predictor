@@ -1,7 +1,6 @@
 {
   "build": {
-    "builder": "NIXPACKS",
-    "nixpacksConfigPath": "nixpacks.toml"
+    "nixpacksPlan": true
   },
   "deploy": {
     "startCommand": "bash start.sh"
