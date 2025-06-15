@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pkl
+*.joblib
+*.h5
+
+# Virtual Environments
+venv/
+.venv/
+env/
+.env/
+*.env
+
+# Streamlit config
+.streamlit/
+credentials.toml
+
+# OS Files
+.DS_Store
+
+# Reports
+*.pdf
+*.log
+
+# VS Code
+.vscode/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Cache
+.cache/
