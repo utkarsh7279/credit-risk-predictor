@@ -1,8 +1,0 @@
-{
-  "build": {
-    "nixpacksPlan": true
-  },
-  "deploy": {
-    "startCommand": "bash start.sh"
-  }
-}

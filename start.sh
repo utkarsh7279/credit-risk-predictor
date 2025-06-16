@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Start the FastAPI backend in background
+# Start FastAPI (on port 8000)
 uvicorn backend.main:app --host=0.0.0.0 --port=8000 &
 
-# Wait for backend to start (optional: increase sleep time if needed)
+# Wait a bit for backend to start
 sleep 5
 
-# Start Streamlit frontend
-streamlit run frontend/streamlit_app.py --server.port 8080 --server.address 0.0.0.0
+# Start Streamlit (on port 8080 — Railway uses this)
+streamlit run frontend/streamlit_app.py --server.port=8080 --server.enableCORS false
