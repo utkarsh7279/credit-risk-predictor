@@ -1,7 +1,6 @@
 # Python
 __pycache__/
 *.py[cod]
-*.pkl
 *.joblib
 *.h5
 
@@ -10,7 +9,10 @@ venv/
 .venv/
 env/
 .env/
-*.env
+
+# Environment variables (but keep .env.example)
+.env
+!.env.example
 
 # Streamlit config
 .streamlit/secrets.toml
@@ -31,3 +33,6 @@ credentials.toml
 
 # Cache
 .cache/
+
+# Keep the model file
+!backend/models/*.pkl

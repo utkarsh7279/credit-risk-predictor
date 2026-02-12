@@ -4,8 +4,9 @@ from pydantic import BaseModel
 import joblib
 import pandas as pd
 import shap
+import os
 
-app = FastAPI()
+app = FastAPI(title="Credit Risk Predictor API", version="1.0.0")
 
 # Enable CORS for frontend
 app.add_middleware(
@@ -16,8 +17,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load model
-model = joblib.load("models/xgb_credit_pipeline.pkl")
+# Load model with error handling
+try:
+    model_path = os.path.join(os.path.dirname(__file__), "models", "xgb_credit_pipeline.pkl")
+    model = joblib.load(model_path)
+except FileNotFoundError:
+    raise RuntimeError(f"Model file not found at {model_path}. Please ensure the model is trained and committed to the repository.")
+
+# Health check endpoint
+@app.get("/health")
+def health():
+    return {"status": "healthy", "service": "credit-risk-backend"}
+
+@app.get("/")
+def root():
+    return {"message": "Credit Risk Predictor API", "docs": "/docs"}
 
 # Pydantic schema (frontend se lowercase keys aayengi)
 class CreditInput(BaseModel):
