@@ -7,11 +7,11 @@ import os
 # Config
 # -------------------------------
 # Use environment variable for deployed backend, fallback to local
-# Try Streamlit secrets first (for Streamlit Cloud), then env var, then local
+# Try Streamlit secrets first (for Streamlit Cloud), then env var, then deployed backend
 try:
-    BACKEND_URL = st.secrets.get("BACKEND_URL", os.getenv("BACKEND_URL", "http://127.0.0.1:8000/predict"))
+    BACKEND_URL = st.secrets.get("BACKEND_URL", os.getenv("BACKEND_URL", "https://credit-risk-predictor-7qgj.onrender.com/predict"))
 except:
-    BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000/predict")
+    BACKEND_URL = os.getenv("BACKEND_URL", "https://credit-risk-predictor-7qgj.onrender.com/predict")
 
 # -------------------------------
 # Page Title
