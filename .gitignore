@@ -13,7 +13,7 @@ env/
 *.env
 
 # Streamlit config
-.streamlit/
+.streamlit/secrets.toml
 credentials.toml
 
 # OS Files

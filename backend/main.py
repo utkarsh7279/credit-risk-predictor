@@ -1,51 +1,78 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import pickle
+import joblib
 import pandas as pd
 import shap
 
-# Load the model
-with open("models/xgb_credit_pipeline.pkl", "rb") as f:
-    model = pickle.load(f)
-
 app = FastAPI()
 
-# Define input schema
+# Enable CORS for frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Load model
+model = joblib.load("models/xgb_credit_pipeline.pkl")
+
+# Pydantic schema (frontend se lowercase keys aayengi)
 class CreditInput(BaseModel):
+    age: int
+    sex: str
     job: str
     housing: str
-    purpose: str
-    sex: str
     saving_accounts: str
     checking_account: str
-    age: float
     credit_amount: float
-    duration: float
+    duration: int
+    purpose: str
 
 @app.post("/predict")
 def predict(data: CreditInput):
     try:
-        input_dict = data.dict()
+        # Mapping frontend -> training columns
+        input_dict = {
+            "Age": data.age,
+            "Sex": data.sex,
+            "Job": data.job,
+            "Housing": data.housing,
+            "Saving accounts": data.saving_accounts,
+            "Checking account": data.checking_account,
+            "Credit amount": data.credit_amount,
+            "Duration": data.duration,
+            "Purpose": data.purpose
+        }
 
-        # Make a DataFrame with correct column names
-        input_df = pd.DataFrame([input_dict])
+        df = pd.DataFrame([input_dict])
 
         # Prediction
-        prediction = model.predict(input_df)[0]
-        prob = model.predict_proba(input_df)[0][1]
+        prediction = int(model.predict(df)[0])
 
-        # SHAP Explanation
-        explainer = shap.Explainer(model.named_steps["classifier"])
-        transformed_input = model.named_steps["preprocessor"].transform(input_df)
-        shap_values = explainer(transformed_input)
+        # SHAP explainability (wrapped in try–except)
+        shap_values = None
+        try:
+            explainer = shap.Explainer(model.named_steps["classifier"])
+            X_transformed = model.named_steps["preprocessor"].transform(df)
+            shap_values = explainer(X_transformed)
+            shap_values = shap_values.values.tolist()
+        except Exception as e:
+            shap_values = None   # fail gracefully
 
         return {
-            "prediction": int(prediction),
-            "probability_of_risk": float(prob),
-            "shap_values": shap_values.values.tolist()[0]
+            "success": True,
+            "prediction": prediction,
+            "features": input_dict,
+            "shap_values": shap_values
         }
 
     except Exception as e:
-        print("❌ Error in prediction route:", str(e))
-        return {"error": str(e)}
-    
+        return {
+            "success": False,
+            "prediction": None,
+            "shap_values": None,
+            "error": str(e)
+        }

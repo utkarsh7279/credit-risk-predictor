@@ -1,66 +1,81 @@
 import streamlit as st
 import requests
-from requests.auth import HTTPBasicAuth
-import matplotlib.pyplot as plt
+import joblib
+import os
 
-st.title("Credit Risk Prediction")
+# -------------------------------
+# Config
+# -------------------------------
+# Use environment variable for deployed backend, fallback to local
+# Try Streamlit secrets first (for Streamlit Cloud), then env var, then local
+try:
+    BACKEND_URL = st.secrets.get("BACKEND_URL", os.getenv("BACKEND_URL", "http://127.0.0.1:8000/predict"))
+except:
+    BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000/predict")
 
-# User input form
-job = st.selectbox("Job", ["unskilled", "skilled", "highly skilled"])
-housing = st.selectbox("Housing", ["own", "free", "rent"])
-purpose = st.selectbox("Purpose", ["car", "radio/TV", "education", "furniture/equipment", "business", "domestic appliances"])
-sex = st.selectbox("Sex", ["male", "female"])
-saving_accounts = st.selectbox("Saving Accounts", ["little", "moderate", "quite rich", "rich", "no_info"])
-checking_account = st.selectbox("Checking Account", ["little", "moderate", "rich", "no_info"])
-age = st.number_input("Age", min_value=18, max_value=100, value=30)
-credit_amount = st.number_input("Credit Amount", min_value=0, max_value=100000, value=5000)
-duration = st.number_input("Duration (in months)", min_value=1, max_value=72, value=24)
+# -------------------------------
+# Page Title
+# -------------------------------
+st.set_page_config(page_title="Credit Risk Predictor", layout="wide")
+st.title("💳 AI-Powered Credit Risk Prediction")
 
-if st.button("Predict"):
-    payload = {
-        "job": job,
-        "housing": housing,
-        "purpose": purpose,
-        "sex": sex,
-        "saving_accounts": saving_accounts,
-        "checking_account": checking_account,
-        "age": age,
-        "credit_amount": credit_amount,
-        "duration": duration
-    }
+# -------------------------------
+# Input Form
+# -------------------------------
+with st.form("credit_form"):
+    st.subheader("Enter Applicant Details")
 
-    try:
-        auth = HTTPBasicAuth("admin", "password")  # Adjust/remove if not needed
-        response = requests.post("http://127.0.0.1:8000/predict", auth=auth, json=payload)
-        result = response.json()
+    age = st.number_input("Age", min_value=18, max_value=100, value=30)
+    sex = st.selectbox("Sex", ["male", "female"])
+    job = st.selectbox("Job", ["unskilled", "skilled", "highly skilled", "management"])
+    housing = st.selectbox("Housing", ["own", "rent", "free"])
+    saving_accounts = st.selectbox("Saving accounts", ["little", "moderate", "rich", "quite rich"])
+    checking_account = st.selectbox("Checking account", ["little", "moderate", "rich", "quite rich"])
+    credit_amount = st.number_input("Credit amount", min_value=100, max_value=20000, value=5000)
+    duration = st.slider("Duration (months)", 4, 72, 24)
+    purpose = st.selectbox("Purpose", ["car", "furniture", "radio/TV", "education", "business", "domestic appliance", "repairs"])
 
-        st.write("API response:", result)
+    submitted = st.form_submit_button("🔍 Predict Risk")
 
-        if "prediction" in result:
-            st.success(f"Prediction: {'Good' if result['prediction'] == 1 else 'Bad'} Credit Risk")
-            st.write("🔢 Probability of Risk:", round(result["probability_of_risk"], 4))
+# -------------------------------
+# Handle Form Submit
+# -------------------------------
+if submitted:
+    with st.spinner("Making prediction... ⏳"):
+        try:
+            payload = {
+                "age": age,
+                "sex": sex,
+                "job": job,
+                "housing": housing,
+                "saving_accounts": saving_accounts,
+                "checking_account": checking_account,
+                "credit_amount": credit_amount,
+                "duration": duration,
+                "purpose": purpose
+            }
 
-            # SHAP Values as JSON (optional raw display)
-            st.subheader("📊 SHAP Values (Raw)")
-            st.json(result["shap_values"])
+            response = requests.post(BACKEND_URL, json=payload)
 
-            # 🎯 NEW: SHAP Feature Importance Bar Plot
-            st.subheader("📊 SHAP Feature Impact (Top 10)")
-            shap_vals = result["shap_values"]
-            feature_names = result.get("feature_names", [f"feature_{i}" for i in range(len(shap_vals))])
-            shap_data = list(zip(feature_names, shap_vals))
-            shap_data.sort(key=lambda x: abs(x[1]), reverse=True)
-            top_features = shap_data[:10]
-            labels = [f[0] for f in top_features]
-            values = [f[1] for f in top_features]
-            fig, ax = plt.subplots(figsize=(8, 5))
-            colors = ['green' if val > 0 else 'red' for val in values]
-            ax.barh(labels[::-1], values[::-1], color=colors[::-1])
-            ax.set_xlabel("SHAP Value")
-            ax.set_ylabel("Feature")
-            ax.set_title("Top 10 Feature Impacts on Prediction")
-            st.pyplot(fig)
-        else:
-            st.error(f"⚠️ API Error: {result.get('error', 'No prediction returned.')}")
-    except Exception as e:
-        st.error(f"Connection Error: {e}")
+            if response.status_code == 200:
+                result = response.json()
+
+                if result.get("success"):
+                    # ✅ Prediction
+                    prediction = "Good Credit Risk" if result["prediction"] == 1 else "Bad Credit Risk"
+                    st.success(f"✅ Prediction: {prediction}")
+
+                    # 🔎 SHAP values
+                    if result.get("shap_values"):
+                        st.subheader("🔎 SHAP Feature Contributions")
+                        st.json(result["shap_values"])
+                    else:
+                        st.warning("⚠️ SHAP explanation not available for this prediction.")
+                else:
+                    st.error(f"❌ Prediction failed: {result.get('error')}")
+
+            else:
+                st.error(f"🚨 API Error: {response.status_code}\n\n{response.text}")
+
+        except Exception as e:
+            st.error(f"🚨 API call failed or SHAP error:\n\n{str(e)}")
